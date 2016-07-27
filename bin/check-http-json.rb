@@ -56,6 +56,7 @@ class CheckJson < Sensu::Plugin::Check::CLI
   option :timeout, short: '-t SECS', proc: proc(&:to_i), default: 15
   option :key, short: '-K KEY', long: '--key KEY'
   option :value, short: '-v VALUE', long: '--value VALUE'
+  option :escount, short: '-e', boolean: true, default: false
 
   def run
     if config[:url]
@@ -141,12 +142,15 @@ class CheckJson < Sensu::Plugin::Check::CLI
         raise "could not find key: #{config[:key]}" unless tree.key?(key)
         tree[key]
       end
-
-      raise "unexpected value for key: '#{config[:value]}' != '#{leaf}'" unless leaf.to_s == config[:value].to_s
-
-      ok "key has expected value: '#{config[:key]}' = '#{config[:value]}'"
-    rescue => e
-      critical "key check failed: #{e}"
+      if config[:escount].nil?
+        raise "unexpected value for key: '#{config[:value]}' != '#{leaf}'" unless leaf.to_s == config[:value].to_s
+        ok "key has expected value: '#{config[:key]}' = '#{config[:value]}'"
+      else
+        raise "too few records!: '#{config[:value]}' > '#{leaf}'" unless leaf.to_i > config[:value].to_i
+        ok "key has expected value: '#{leaf} > '#{config[:value]}'"
+      end
+      rescue => e
+        critical "key check failed: #{e}"
+      end
     end
-  end
 end
